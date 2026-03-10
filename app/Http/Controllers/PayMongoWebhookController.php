@@ -14,7 +14,7 @@ class PayMongoWebhookController extends Controller
         $payload = $request->getContent();
         $event = json_decode($payload, true);
 
-        $signature = $request->header('Paymongo_Signature');
+        $signature = $request->headers->get('paymongo-signature');
 
         $parts = explode(',', $signature);
         $timestamp = explode('=', $parts[0])[1];
