@@ -10,7 +10,7 @@ class PayMongoWebhookController extends Controller
     public function handle(Request $request)
     {
         $payload = $request->getContent();
-        $signature = $request->header('PayMongo-Signature');
+        $signature = $request->header('Paymongo-Signature');
         $webhookSecret = config('services.paymongo.webhook_secret');
 
         if (!$this->verifySignature($payload, $signature, $webhookSecret)) {
@@ -20,7 +20,7 @@ class PayMongoWebhookController extends Controller
         $event = json_decode($payload, true);
         $type = $event['data']['attributes']['type'];
 
-        if ($type === 'payment.paid' || $type === 'checkout_session.payment.paid') {
+        if ($type === 'payment.paid') {
             $this->paymentPaid($event);
         }
 
