@@ -9,25 +9,16 @@ class PayMongoWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        $secret = config('services.paymongo.webhook_secret');
-
         $payload = $request->getContent();
-        $event = json_decode($payload, true);
+        $signature = $request->header('PayMongo-Signature');
+        $webhookSecret = config('services.paymongo.webhook_secret');
 
-        $signature = $request->headers->get('paymongo-signature');
-
-        $parts = explode(',', $signature);
-        $timestamp = explode('=', $parts[0])[1];
-        $sig = explode('=', $parts[1])[1];
-
-        $signedPayload = $timestamp . '.' . $payload;
-        $computed = hash_hmac('sha256', $signedPayload, $secret);
-
-        if (!hash_equals($computed, $sig)) {
+        if (!$this->verifySignature($payload, $signature, $webhookSecret)) {
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        $type = data_get($event, 'data.attributes.type');
+        $event = json_decode($payload, true);
+        $type = $event['data']['attributes']['type'];
 
         if ($type === 'payment.paid' || $type === 'checkout_session.payment.paid') {
             $this->paymentPaid($event);
@@ -38,6 +29,18 @@ class PayMongoWebhookController extends Controller
         }
 
         return response()->json(['status' => 'ok'], 200);
+    }
+
+    private function verifySignature($payload, $signature, $secret)
+    {
+        parse_str(str_replace(',', '&', $signature), $parts);
+        $timestamp = $parts['t'];
+        $signatureHash = $parts['li'];
+
+        $signedPayload = "{$timestamp}.{$payload}";
+        $expectedSignature = hash_hmac('sha256', $signedPayload, $secret);
+
+        return hash_equals($expectedSignature, $signatureHash);
     }
 
     private function paymentPaid($event)
