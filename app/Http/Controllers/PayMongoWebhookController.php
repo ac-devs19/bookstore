@@ -29,11 +29,13 @@ class PayMongoWebhookController extends Controller
 
         $type = data_get($event, 'data.attributes.type');
 
-        match ($type) {
-            'payment.paid' => $this->paymentPaid($event),
-            'payment.failed' => $this->paymentFailed($event),
-            default => null,
-        };
+        if ($type === 'payment.paid' || $type === 'checkout_session.payment.paid') {
+            $this->paymentPaid($event);
+        }
+
+        if ($type === 'payment.failed') {
+            $this->paymentFailed($event);
+        }
 
         return response()->json(['status' => 'ok'], 200);
     }
